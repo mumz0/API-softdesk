@@ -1,0 +1,5 @@
+env/
+softdesk/softdesk/__pycache__
+softdesk/users/__pycache__
+softdesk/users/migration/__pycache__
+softdesk/users/db.sqlite3
