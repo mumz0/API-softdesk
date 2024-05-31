@@ -8,7 +8,6 @@ from rest_framework.response import Response
 from rest_framework import status
 
 
-
 class CreateUserAPIView(APIView):
     
     def post(self, request):
@@ -17,7 +16,6 @@ class CreateUserAPIView(APIView):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 
 
 class UserAPIView(APIView):
