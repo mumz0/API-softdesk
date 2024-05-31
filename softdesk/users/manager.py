@@ -3,6 +3,7 @@ from django.core.exceptions import ValidationError
 from rest_framework import status
 from rest_framework.exceptions import APIException
 from datetime import datetime, timedelta
+from django.utils.translation import gettext_lazy as _
 
 
 class CustomUserManager(BaseUserManager):
@@ -21,16 +22,15 @@ class CustomUserManager(BaseUserManager):
 
         if extra_fields.get("is_staff") is not True:
             raise ValueError(_("Superuser must have is_staff=True."))
+        
         if extra_fields.get("is_superuser") is not True:
             raise ValueError(_("Superuser must have is_superuser=True."))
+        
         return self.create_user(username, password, date_of_birth, **extra_fields)
         
         
     def create_user(self, username, password=None, date_of_birth=None, can_be_contacted=None, can_data_be_shared=None, **extra_fields):
         
-        extra_fields.setdefault("is_staff", False)
-        extra_fields.setdefault("is_superuser", False)
-        extra_fields.setdefault("is_active", True)
         
         if not username:
             raise ValidationError({'username': ['Le champ "username" doit être renseigné']})
