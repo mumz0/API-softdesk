@@ -16,7 +16,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
-from projects.views import ContributorCreateView, CustomProjectCreateView, IssueCreateAPIView, ProjectAPIView, ProjectContributorsView, ProjectIssueAPIView, ProjectUserIssuesAPIView
+from projects.views import CommentDetailView, CreateCommentAPIView, ProjectAPIView, ProjectContributorsView, ProjectIssueAPIView
 from users.views import UserAPIView, CreateUserAPIView
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
@@ -33,16 +33,15 @@ urlpatterns = [
     path('api/users/', UserAPIView.as_view(), name='user-list'),
     path('api/users/<int:pk>/', UserAPIView.as_view(), name='user-detail'),
     
-    path('projects/create', CustomProjectCreateView.as_view(), name='create-project'),
     path('projects/', ProjectAPIView.as_view(), name='project-list'),
     path('projects/<int:pk>/', ProjectAPIView.as_view(), name='project-detail'),
     
-    path('projects/<int:project_id>/contributors/create/', ContributorCreateView.as_view(), name='create-project-contributors'),
     path('projects/<int:project_id>/contributors/', ProjectContributorsView.as_view(), name='project-contributors'),
     path('projects/<int:project_id>/contributors/<int:user_id>/', ProjectContributorsView.as_view(), name='project-contributor'),
 
-    path('projects/<int:project_id>/issues/create/', IssueCreateAPIView.as_view(), name='create_issue'),
     path('projects/<int:project_id>/issues/', ProjectIssueAPIView.as_view(), name='list_create_issues'),
     path('projects/<int:project_id>/issues/<int:issue_id>/', ProjectIssueAPIView.as_view(), name='issue'),
-    path('projects/<int:project_id>/contributors/<int:user_id>/issues/', ProjectUserIssuesAPIView.as_view(), name='project-contributor-issues'),
+    
+    path('projects/<int:project_id>/issues/<int:issue_id>/comments/', CreateCommentAPIView.as_view(), name='comment-list-create'),
+    path('projects/<int:project_id>/issues/<int:issue_id>/comments/<uuid:uuid>/', CommentDetailView.as_view(), name='comment-detail'),
 ]
