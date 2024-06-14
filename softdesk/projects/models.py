@@ -1,5 +1,5 @@
 
-from django.utils import timezone
+from django.db.models import SET_NULL
 from uuid import uuid4
 from django.db import models
 from users.models import CustomUser
@@ -48,10 +48,13 @@ class Issue(models.Model):
 
 
 class Comment(models.Model):
-    author = models.ForeignKey(Contributor, related_name='created_comment', on_delete=models.CASCADE, null=True, default=None)
+    author = models.ForeignKey(CustomUser, related_name='created_comment', on_delete=models.CASCADE)
     created_time = models.DateTimeField(auto_now_add=True)
     modified_time = models.DateTimeField(auto_now=True)
     description = models.CharField(max_length=150)
-    link = models.CharField(max_length=150)
     issue = models.ForeignKey(Issue, related_name='issue_commented', on_delete=models.CASCADE)
-    uuid = models.CharField(max_length=15000)
+    uuid = models.UUIDField(default=uuid4, editable=False)
+    
+    class Meta:
+        verbose_name = 'comment'
+        verbose_name_plural = 'comments'

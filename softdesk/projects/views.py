@@ -1,41 +1,28 @@
-from django.http import Http404, JsonResponse
+from django.http import Http404
 from django.shortcuts import get_object_or_404
-from rest_framework import status
+from rest_framework import status, generics
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from projects.permissions import CommentPermissions
 from users.models import CustomUser
-from .models import Contributor, CustomProject, Issue
-from .serializers import ContributorSerializer, CustomProjectSerializer, IssueSerializer
+from .models import Contributor, CustomProject, Issue, Comment
+from .serializers import CommentSerializer, ContributorSerializer, CustomProjectSerializer, IssueSerializer
 from rest_framework.permissions import IsAuthenticated
+import logging
 
-
-class CustomProjectCreateView(APIView):
-    permission_classes = [IsAuthenticated]
-    
-    def post(self, request):
-        
-        data = request.data.copy()
-        data["author"] = request.user
-        serializer = CustomProjectSerializer(data=data)
-        print('serializer', serializer)
-        if serializer.is_valid():
-            project = serializer.save(author=data["author"])
-
-            Contributor.objects.create(user=request.user, project=project)
-
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
+logger = logging.getLogger(__name__)
 
 class ProjectAPIView(APIView):
     permission_classes = [IsAuthenticated]
+    
     
     def get_object(self, pk):
         try:
             return CustomProject.objects.get(pk=pk)
         except CustomProject.DoesNotExist:
             raise Http404
+    
     
     def get(self, request, pk=None):
         if pk:
@@ -46,6 +33,19 @@ class ProjectAPIView(APIView):
         serializer = CustomProjectSerializer(projects, many=True)
         return Response(serializer.data)
     
+    
+    def post(self, request):
+        data = request.data.copy()
+        data["author"] = request.user
+        serializer = CustomProjectSerializer(data=data)
+        print('serializer', serializer)
+        if serializer.is_valid():
+            project = serializer.save(author=data["author"])
+            Contributor.objects.create(user=request.user, project=project)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    
     def put(self, request, pk):
         project = self.get_object(pk)
         serializer = CustomProjectSerializer(project, data=request.data)
@@ -54,40 +54,11 @@ class ProjectAPIView(APIView):
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
+    
     def delete(self, request, pk):
         project = self.get_object(pk)
         project.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
-
-
-class ContributorCreateView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request, project_id):
-        project = get_object_or_404(CustomProject, id=project_id)
-        print("project", project)
-        if project.author != request.user:
-            return Response({"error": "Only the author of the project can add contributors."}, status=status.HTTP_403_FORBIDDEN)
-        
-        username_to_add = request.data.get("username")
-        if not username_to_add:
-            return Response({"error": "Username to add is required."}, status=status.HTTP_400_BAD_REQUEST)
-        
-        try:
-            user_to_add = CustomUser.objects.get(username=username_to_add)
-            print("user_to_add", user_to_add)
-        except CustomUser.DoesNotExist:
-            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
-
-        if Contributor.objects.filter(user=user_to_add, project=project).exists():
-            return Response({"error": "User is already a contributor to this project"}, status=status.HTTP_400_BAD_REQUEST)
-
-        contributor = Contributor(user=user_to_add, project=project)
-        print("contributor", contributor)
-        contributor.save()
-
-        serializer = ContributorSerializer(contributor)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class ProjectContributorsView(APIView):
@@ -106,6 +77,7 @@ class ProjectContributorsView(APIView):
             project = get_object_or_404(CustomProject, id=project_id)
             return Contributor.objects.filter(project=project)
 
+
     def get(self, request, project_id, user_id=None):
         if user_id is not None:
 
@@ -118,6 +90,28 @@ class ProjectContributorsView(APIView):
             serializer = ContributorSerializer(contributors, many=True)
             return Response(serializer.data)
 
+    
+    def post(self, request, project_id):
+        project = get_object_or_404(CustomProject, id=project_id)
+        username_to_add = request.data.get("username")
+        if not username_to_add:
+            return Response({"error": "Username to add is required."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            user_to_add = CustomUser.objects.get(username=username_to_add)
+        except CustomUser.DoesNotExist:
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        if Contributor.objects.filter(user=user_to_add, project=project).exists():
+            return Response({"error": "User is already a contributor to this project"}, status=status.HTTP_400_BAD_REQUEST)
+
+        contributor = Contributor(user=user_to_add, project=project)
+        contributor.save()
+
+        serializer = ContributorSerializer(contributor)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+    
     def delete(self, request, project_id, user_id):
         project = get_object_or_404(CustomProject, id=project_id)
         
@@ -128,9 +122,29 @@ class ProjectContributorsView(APIView):
         contributor.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-class IssueCreateAPIView(APIView):
+
+class ProjectIssueAPIView(APIView):
     permission_classes = [IsAuthenticated]
-    
+
+
+    def get_object(self, project_id, issue_id=None):
+        project = get_object_or_404(CustomProject, id=project_id)
+        if issue_id:
+            return get_object_or_404(Issue, id=issue_id, project=project)
+        else:
+            return Issue.objects.filter(project=project)
+
+
+    def get(self, request, project_id, issue_id=None):
+        if issue_id:
+            issue = self.get_object(project_id, issue_id)
+            serializer = IssueSerializer(issue)
+            return Response(serializer.data)
+        else:
+            issues = self.get_object(project_id)
+            serializer = IssueSerializer(issues, many=True)
+            return Response(serializer.data)
+
     def post(self, request, project_id):
        
         project = get_object_or_404(CustomProject, id=project_id)
@@ -151,29 +165,8 @@ class IssueCreateAPIView(APIView):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-class ProjectIssueAPIView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get_object(self, project_id, issue_id=None):
-        project = get_object_or_404(CustomProject, id=project_id)
-        if issue_id:
-            return get_object_or_404(Issue, id=issue_id, project=project)
-        else:
-            return Issue.objects.filter(project=project)
-
-    def get(self, request, project_id, issue_id=None):
-        if issue_id:
-            issue = self.get_object(project_id, issue_id)
-            serializer = IssueSerializer(issue)
-            return Response(serializer.data)
-        else:
-            issues = self.get_object(project_id)
-            serializer = IssueSerializer(issues, many=True)
-            return Response(serializer.data)
-
-
+    
+    
     def put(self, request, project_id, issue_id):
         project = get_object_or_404(CustomProject, id=project_id)
         issue = get_object_or_404(Issue, id=issue_id, project=project)
@@ -187,6 +180,7 @@ class ProjectIssueAPIView(APIView):
         else:
             return Response({"error": "Only the issue creator or project author can modify this issue."}, status=status.HTTP_403_FORBIDDEN)
 
+
     def delete(self, request, project_id, issue_id):
         project = get_object_or_404(CustomProject, id=project_id)
         issue = get_object_or_404(Issue, id=issue_id, project=project)
@@ -198,30 +192,54 @@ class ProjectIssueAPIView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class ProjectUserIssuesAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+class CreateCommentAPIView(generics.ListCreateAPIView):
+    
+    serializer_class = CommentSerializer
+    permission_classes = [IsAuthenticated, CommentPermissions]
+    
+    def get_queryset(self):
+        return Comment.objects.filter(issue=self.kwargs.get('issue_id'))
+        
+    def perform_create(self, serializer):
+        serializer.save(author=self.request.user)
 
-    def get(self, request, project_id, user_id):
+    def get(self, request, *args, **kwargs):
+        return self.list(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        return self.create(request, *args, **kwargs)
+    
+
+class CommentDetailView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Comment.objects.all()
+    serializer_class = CommentSerializer
+    permission_classes = [IsAuthenticated, CommentPermissions]
+
+    def get_object(self):
+        issue_id = self.kwargs.get('issue_id')
+        uuid = self.kwargs.get('uuid')
         try:
-            project = CustomProject.objects.get(id=project_id)
-        except Contributor.DoesNotExist:
-            return Response({"error": "You are not a contributor of this project."}, status=status.HTTP_403_FORBIDDEN)
-        except CustomProject.DoesNotExist:
-            return Response({"error": "Project not found."}, status=status.HTTP_404_NOT_FOUND)
-        
-        try:
-            specified_user = CustomUser.objects.get(id=user_id)
-            Contributor.objects.get(project=project, user=specified_user)
-        except Contributor.DoesNotExist:
-            return Response({"error": "Specified user is not a contributor to this project."}, status=status.HTTP_404_NOT_FOUND)
-        except CustomUser.DoesNotExist:
-            return Response({"error": "Specified user not found."}, status=status.HTTP_404_NOT_FOUND)
-        
-        issues = Issue.objects.filter(user=specified_user, project=project)
-        serializer = IssueSerializer(issues, many=True)
+            return Comment.objects.get(issue_id=issue_id, uuid=uuid)
+        except Comment.DoesNotExist:
+            raise Http404
+    
+    def get(self, request, *args, **kwargs):
+        comment = self.get_object()
+        self.check_object_permissions(request, comment)
+        serializer = self.get_serializer(comment)
         return Response(serializer.data)
 
+    def put(self, request, *args, **kwargs):
+        comment = self.get_object()
+        self.check_object_permissions(request, comment)
+        serializer = self.get_serializer(comment, data=request.data, partial=False)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(serializer.data)
 
-
-
-
+    def delete(self, request, *args, **kwargs):
+        
+        comment = self.get_object()
+        self.check_object_permissions(request, comment)
+        self.perform_destroy(comment)
+        return Response(status=status.HTTP_204_NO_CONTENT)

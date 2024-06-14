@@ -3,9 +3,7 @@ from users.admin import UserAdmin
 from .models import Contributor, CustomProject, Issue
 from django.contrib import admin
 from django.http import HttpResponseForbidden, HttpResponseBadRequest
-from .models import CustomProject, Contributor, Issue
-
-
+from .models import CustomProject, Contributor, Issue, Comment
 
 
 class IssueAdmin(admin.ModelAdmin):
@@ -25,7 +23,7 @@ class IssueAdmin(admin.ModelAdmin):
         super().save_model(request, obj, form, change)
 
         
-        
 admin.site.register(CustomProject, UserAdmin)
 admin.site.register(Contributor, UserAdmin)
 admin.site.register(Issue, IssueAdmin)
+admin.site.register(Comment, UserAdmin)
