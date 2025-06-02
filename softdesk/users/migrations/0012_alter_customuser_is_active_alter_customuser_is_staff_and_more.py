@@ -6,7 +6,8 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('users', '0011_alter_customuser_can_be_contacted_and_more'),
+        ('users', '0009_alter_customuser_can_be_contacted_and_more'),
+        
     ]
 
     operations = [
