@@ -73,7 +73,7 @@ class IssueSerializer(serializers.ModelSerializer):
     class Meta:
         model = Issue
         fields = ['id', 'name', 'description', 'status', 'priority', 'type', 'user', 'project']
-        read_only_fields = ["id", "user", "project", 'created_time', 'modified_time']
+        read_only_fields = ["id", "project", 'created_time', 'modified_time']
         
         
 class CommentSerializer(serializers.ModelSerializer):

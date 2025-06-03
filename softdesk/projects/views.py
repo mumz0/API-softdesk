@@ -360,22 +360,20 @@ class ProjectIssueAPIView(APIView):
         serializer = IssueSerializer(data=request.data, context={'request': request, 'project': project})
         
         if serializer.is_valid():
-            # L'utilisateur connecté devient l'auteur de l'issue
+            # The authenticated user becomes the author of the issue
             author_contributor = Contributor.objects.get(user=request.user, project=project)
             serializer.validated_data['author'] = author_contributor
             serializer.validated_data['project'] = project
             
-            # Si un utilisateur spécifique est assigné dans les données, sinon assigner à soi-même
-            if 'user' in request.data:
-                user_work_on = get_object_or_404(CustomUser, username=request.data['user'])
-                # Vérifier que l'utilisateur assigné est aussi un contributeur
-                if not Contributor.objects.filter(user=user_work_on, project=project).exists():
-                    return Response({"error": "Assigned user must be a contributor of the project."}, 
+            # Check if a specific contributor is assigned
+            if 'user' in serializer.validated_data and serializer.validated_data['user']:
+                assigned_contributor = serializer.validated_data['user']
+                # Verify that the assigned contributor belongs to the project
+                if assigned_contributor.project != project:
+                    return Response({"error": "Assigned contributor must belong to this project."}, 
                                 status=status.HTTP_400_BAD_REQUEST)
-                serializer.validated_data['user'] = Contributor.objects.get(user=user_work_on, project=project)
-            else:
-                # Si aucun utilisateur n'est spécifié, assigner l'issue à celui qui la crée
-                serializer.validated_data['user'] = author_contributor
+            # If no contributor is assigned, leave the field empty (None)
+            # The issue can remain unassigned
             
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
