@@ -15,16 +15,22 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path, include
-from projects.views import CommentDetailView, CreateCommentAPIView, ProjectAPIView, ProjectContributorsView, ProjectIssueAPIView
+from django.urls import path
+from django.shortcuts import redirect
+from projects.views import ProjectCommentAPIView, ProjectAPIView, ProjectContributorsView, ProjectIssueAPIView
 from users.views import UserAPIView, CreateUserAPIView
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
 )
+
+def redirect_to_token(request):
+    """Redirige vers l'endpoint de récupération du token JWT"""
+    return redirect('token_obtain_pair')
+
 urlpatterns = [
+    path('', redirect_to_token, name='home'),
     path('admin/', admin.site.urls),
-    path('api-auth/', include('rest_framework.urls')),
     
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
@@ -42,6 +48,6 @@ urlpatterns = [
     path('projects/<int:project_id>/issues/', ProjectIssueAPIView.as_view(), name='list_create_issues'),
     path('projects/<int:project_id>/issues/<int:issue_id>/', ProjectIssueAPIView.as_view(), name='issue'),
     
-    path('projects/<int:project_id>/issues/<int:issue_id>/comments/', CreateCommentAPIView.as_view(), name='comment-list-create'),
-    path('projects/<int:project_id>/issues/<int:issue_id>/comments/<uuid:uuid>/', CommentDetailView.as_view(), name='comment-detail'),
+    path('projects/<int:project_id>/issues/<int:issue_id>/comments/', ProjectCommentAPIView.as_view(), name='comment-list-create'),
+    path('projects/<int:project_id>/issues/<int:issue_id>/comments/<uuid:uuid>/', ProjectCommentAPIView.as_view(), name='comment-detail'),
 ]
