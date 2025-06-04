@@ -1,4 +1,5 @@
 from rest_framework import serializers
+
 from .models import CustomProject, Contributor, Issue, Comment
 
 class ContributorSerializer(serializers.ModelSerializer):
@@ -21,28 +22,28 @@ class ContributorSerializer(serializers.ModelSerializer):
 
 class CustomProjectSerializer(serializers.ModelSerializer):
     """
-    Serializer for CustomProject model with nested contributors.
+    Serializer for CustomProject model.
     This serializer handles the serialization and deserialization of CustomProject
-    instances, including their associated contributors. The contributors field is
-    read-only and uses the ContributorSerializer for nested representation.
+    instances, providing a JSON representation of project data.
     Fields:
         id (int): Unique identifier for the project (read-only)
         name (str): Name of the project
         description (str): Detailed description of the project
         type (str): Type/category of the project
-        author (User): Project author (read-only)
-        contributors (list): List of project contributors (read-only, nested)
+        author (User): User who created the project (read-only)
     Read-only fields:
         - id: Auto-generated primary key
         - author: Set automatically based on the authenticated user
-        - created_time: Auto-populated timestamp
-        - modified_time: Auto-updated timestamp
+        - created_time: Timestamp when the project was created
+        - modified_time: Timestamp when the project was last modified
+    Note:
+        The author field is automatically populated and cannot be modified
+        through this serializer to ensure data integrity.
     """
-    contributors = ContributorSerializer(many=True, read_only=True)
 
     class Meta:
         model = CustomProject
-        fields = ['id', 'name', 'description', 'type', 'author', 'contributors']
+        fields = ['id', 'name', 'description', 'type', 'author']
         read_only_fields = ["id", "author", 'created_time', 'modified_time']
         
         
@@ -100,3 +101,4 @@ class CommentSerializer(serializers.ModelSerializer):
         model = Comment
         fields = ['id','author', 'created_time', 'modified_time', 'description', 'issue', 'uuid']
         read_only_fields = ["id", "author", 'created_time', 'modified_time', "uuid", "issue"]
+
